@@ -1,0 +1,898 @@
+# MASTER FULL-STACK DEVELOPMENT PROMPT — GHARGURU HOME TUTOR MARKETPLACE
+
+Act as a senior full-stack architect, Python backend engineer, PostgreSQL database designer, application security engineer and frontend integration specialist.
+
+I already have an existing GharGuru Home Tutor Marketplace frontend. Your task is to convert that existing project into a complete, working, database-connected full-stack application.
+
+IMPORTANT: Work inside the existing project. Inspect the code before making changes. Preserve the existing UI, branding, layout, colors, logo, typography, animations, responsive behaviour and working frontend features. Do not redesign the application or replace it with a basic template.
+
+Do not only provide instructions or code snippets. Implement the actual application, create all required files, connect the frontend to the backend, test the important workflows and document how to run everything.
+
+The frontend must continue looking like the existing premium GharGuru product.
+
+# PART 1 — PROJECT REQUIREMENTS
+
+Product: GharGuru Home Tutor Marketplace
+
+Tagline: The right tutor. Right at home.
+
+Purpose:
+Build a web application that connects parents and students with suitable home tutors according to education board, grade, subject, locality, budget, experience and availability.
+
+Initial target market: One selected locality in Mumbai, India.
+
+Supported education boards:
+- CBSE
+- Maharashtra SSC
+- ICSE
+- NIOS
+
+Three main roles:
+
+1. Parent/Student
+2. Tutor
+3. Administrator
+
+The system must support secure registration, login, tutor profiles, discovery and filtering, enquiries, profile review, verification records, dashboards and complaint management.
+
+Use the existing frontend stack:
+- React
+- Vite
+- TypeScript
+- Tailwind CSS
+- React Router
+- Lucide React
+
+Backend:
+- Python
+- FastAPI
+- Pydantic
+- SQLAlchemy 2.x
+- Alembic database migrations
+
+Database:
+- PostgreSQL
+
+Authentication:
+- Supabase Auth is the preferred managed authentication option, with FastAPI validating Supabase-issued access tokens.
+- Keep authentication architecture consistent. Do not create a second, competing authentication system.
+- If the existing project already uses another correctly implemented authentication provider, inspect it and propose the smallest safe integration change before replacing it.
+
+Storage:
+- Supabase Storage for profile photos and private documents, or a clearly documented compatible storage adapter.
+
+Testing:
+- pytest
+- FastAPI TestClient or HTTPX
+- Appropriate frontend tests if the existing project has a test framework.
+
+Deployment:
+- Frontend: Vercel or equivalent.
+- Backend: a Python-compatible managed hosting provider.
+- Database: managed PostgreSQL, such as Supabase PostgreSQL.
+
+Use compatible, stable dependency versions and document them.
+
+# PART 2 — FIRST INSPECT THE EXISTING PROJECT
+
+Before coding:
+
+1. Inspect the complete frontend project structure.
+2. Identify existing routes, components, logo assets, design tokens, mock data and forms.
+3. Identify every feature currently using hardcoded data, localStorage or simulated responses.
+4. Identify existing dependencies and avoid unnecessary replacements.
+5. Determine the current Node.js and Python environment requirements.
+6. Check whether any backend or database implementation already exists.
+7. Produce a concise implementation checklist and proceed with development.
+
+Do not delete useful frontend components or existing working functionality.
+
+Do not create a separate disconnected demo application.
+
+If the project is incomplete, repair the existing structure while retaining the established GharGuru design.
+
+# PART 3 — DATABASE DESIGN
+
+Design a normalized PostgreSQL schema with appropriate primary keys, foreign keys, unique constraints, indexes and timestamps.
+
+Use UUID identifiers where appropriate.
+
+Create Alembic migrations. Do not rely on manually creating database tables or automatically dropping/recreating tables at application startup.
+
+Implement the following entities.
+
+## A. users
+
+Fields:
+- id
+- auth_provider_user_id
+- email
+- phone, nullable
+- full_name
+- role: parent, tutor or admin
+- account_status
+- created_at
+- updated_at
+
+Requirements:
+- Link users to the chosen authentication provider.
+- Keep authentication credentials outside the application database when using managed authentication.
+- Prevent ordinary users from assigning themselves the admin role.
+- Enforce unique identifiers appropriately.
+- Do not expose private account information through public APIs.
+
+## B. parent_profiles
+
+Fields:
+- id
+- user_id
+- preferred_locality, nullable
+- preferred_language, nullable
+- created_at
+- updated_at
+
+## C. tutor_profiles
+
+Fields:
+- id
+- user_id
+- headline
+- biography
+- qualification_summary
+- years_of_experience
+- teaching_approach
+- profile_photo_path, nullable
+- languages
+- listing_status: draft, pending_review, approved, rejected or suspended
+- review_notes, restricted to authorized users
+- created_at
+- updated_at
+
+Keep sensitive documents separate from publicly visible profile data.
+
+## D. education_boards
+
+Seed:
+- CBSE
+- Maharashtra SSC
+- ICSE
+- NIOS
+
+Fields:
+- id
+- name
+- slug
+- active
+
+## E. grades
+
+Create a configurable list of supported grades, including Classes 1–12 where applicable.
+
+Fields:
+- id
+- display_name
+- grade_number, nullable for non-standard grades
+- active
+
+## F. subjects
+
+Fields:
+- id
+- name
+- slug
+- active
+
+Include common subjects such as Mathematics, Science, English, Hindi, Social Science, Physics, Chemistry, Biology and Computer Science.
+
+## G. tutor_boards, tutor_grades and tutor_subjects
+
+Create many-to-many relationship tables connecting tutors to the education boards, grades and subjects they teach.
+
+Enforce foreign keys and prevent duplicate associations.
+
+## H. tutor_service_areas
+
+Fields:
+- id
+- tutor_profile_id
+- locality
+- city
+- postal_code, nullable
+- travel_radius_km, nullable
+
+Support locality-based filtering without exposing tutors' private residential addresses.
+
+## I. tutor_fees
+
+Fields:
+- id
+- tutor_profile_id
+- pricing_type: hourly, per_session or monthly
+- amount_inr
+- session_duration_minutes, nullable
+- notes, nullable
+
+Validate positive fee values and define a consistent fee representation.
+
+## J. tutor_availability
+
+Fields:
+- id
+- tutor_profile_id
+- weekday
+- start_time
+- end_time
+- active
+
+Validate that availability intervals are sensible.
+
+## K. verification_records
+
+Fields:
+- id
+- tutor_profile_id
+- verification_type
+- status: not_started, pending, verified or rejected
+- reviewed_by, nullable
+- reviewed_at, nullable
+- internal_notes, nullable
+- created_at
+- updated_at
+
+Never mark a tutor as verified merely because a profile was submitted. Only authorized review actions can change verification status.
+
+Keep internal notes and private verification documents inaccessible to ordinary users.
+
+## L. saved_tutors
+
+Fields:
+- id
+- parent_user_id
+- tutor_profile_id
+- created_at
+
+Enforce uniqueness for each parent–tutor pair.
+
+## M. enquiries
+
+Fields:
+- id
+- parent_user_id
+- tutor_profile_id
+- requested_board_id
+- requested_grade_id
+- requested_subject_id
+- preferred_schedule, nullable
+- parent_message
+- status: submitted, under_review, responded, accepted, declined or closed
+- created_at
+- updated_at
+
+Support the complete parent-to-tutor enquiry workflow.
+
+Only the relevant parent, relevant tutor and authorized administrators may access an enquiry, subject to the defined permissions.
+
+## N. reviews
+
+Fields:
+- id
+- parent_user_id
+- tutor_profile_id
+- enquiry_id, nullable
+- rating
+- review_text
+- moderation_status
+- created_at
+- updated_at
+
+Validate ratings from 1 to 5. Do not permit arbitrary users to create verified-purchase-style reviews or manipulate review ownership.
+
+Clearly distinguish seed data from genuine reviews.
+
+## O. complaints
+
+Fields:
+- id
+- submitted_by_user_id
+- tutor_profile_id, nullable
+- enquiry_id, nullable
+- category
+- description
+- status: open, investigating, resolved or dismissed
+- assigned_admin_id, nullable
+- resolution_notes, restricted to authorized users
+- created_at
+- updated_at
+
+## P. audit_logs
+
+Record important administrative actions, including profile approvals, suspensions, verification decisions and complaint resolutions.
+
+Store the acting user, action type, affected resource, timestamp and suitable non-sensitive metadata.
+
+Do not log passwords, access tokens, private documents or unnecessary personal data.
+
+Use appropriate cascading and deletion rules so historical records and important audit information are not accidentally destroyed.
+
+Add suitable indexes for frequently used search filters and relationships.
+
+# PART 4 — AUTHENTICATION AND AUTHORIZATION
+
+Implement secure authentication integration.
+
+Support:
+- Parent registration and login.
+- Tutor registration and login.
+- Logout.
+- Current-user profile retrieval.
+- Protected frontend routes.
+- Protected backend endpoints.
+- Role-based permissions.
+
+When using Supabase Auth:
+
+1. Use the supported Supabase client for authentication.
+2. Send the access token to FastAPI using the Authorization: Bearer header.
+3. Validate the token on the backend using the provider's supported verification mechanism.
+4. Validate signature, expiry, issuer and other required claims.
+5. Derive the application user and role from trusted server-side records.
+6. Never trust a role, user ID or admin flag supplied by the frontend.
+7. Never use a Supabase service-role key in browser code.
+
+Create reusable authentication dependencies in FastAPI.
+
+Define permissions for:
+- Public visitors.
+- Authenticated parents.
+- Authenticated tutors.
+- Administrators.
+
+A tutor must not edit another tutor's profile.
+
+A parent must not view another parent's private enquiries.
+
+A tutor must not access another tutor's private enquiries.
+
+Only authorized administrators may approve, reject or suspend listings, change verification status, moderate reviews and manage complaints.
+
+Use deny-by-default authorization for protected resources.
+
+Do not implement fake login success, hardcoded admin passwords or frontend-only security.
+
+Provide documented development setup for creating the initial administrator securely. Never expose a public admin-registration endpoint.
+
+# PART 5 — FASTAPI BACKEND STRUCTURE
+
+Create a maintainable backend, for example:
+
+backend/
+  app/
+    main.py
+    core/
+      config.py
+      security.py
+      dependencies.py
+    db/
+      session.py
+      base.py
+    models/
+    schemas/
+    api/
+      router.py
+      routes/
+    services/
+    repositories/
+    middleware/
+    utils/
+  alembic/
+  tests/
+  requirements.txt
+  alembic.ini
+  .env.example
+  README.md
+
+Adapt this structure if the existing project already has a good organization.
+
+Requirements:
+- Use SQLAlchemy 2.x.
+- Use Pydantic request and response schemas.
+- Use dependency injection for database sessions.
+- Separate API routes from business logic.
+- Use asynchronous database operations only if the complete selected driver and stack support them correctly.
+- Manage database transactions properly.
+- Validate request data on the server.
+- Return appropriate HTTP status codes.
+- Provide consistent, safe error responses.
+- Implement pagination.
+- Add configurable logging and health checks.
+- Do not return database stack traces to clients.
+- Configure CORS for explicitly allowed frontend origins.
+- Add sensible request size limits and rate limiting where appropriate.
+- Keep configuration in environment variables.
+- Never commit secrets.
+
+Provide interactive API documentation through FastAPI's OpenAPI/Swagger interface in development and document its production access policy.
+
+# PART 6 — REQUIRED REST API ENDPOINTS
+
+Use a versioned API prefix such as /api/v1.
+
+## Health
+
+GET /api/v1/health
+
+Return a health response and appropriate service status. Do not expose secrets or infrastructure details.
+
+## Current user and profiles
+
+GET /api/v1/users/me
+
+GET /api/v1/parents/me
+
+PATCH /api/v1/parents/me
+
+GET /api/v1/tutors/me
+
+POST /api/v1/tutors/me
+
+PATCH /api/v1/tutors/me
+
+GET /api/v1/tutors/{tutor_id}
+
+POST /api/v1/tutors/me/submit-for-review
+
+Allow public access only to approved, publicly visible tutor information. Protect drafts, internal review notes and restricted fields.
+
+## Tutor search
+
+GET /api/v1/tutors
+
+Support query parameters:
+- locality
+- board
+- grade
+- subject
+- min_fee
+- max_fee
+- pricing_type
+- min_experience
+- available_weekday, where supported
+- sort
+- page
+- page_size
+
+Return paginated approved tutor profiles.
+
+Filters must work together and match the actual database data.
+
+Use safe query construction and parameterized database operations.
+
+Do not return duplicate tutors because they teach multiple selected subjects or boards.
+
+Implement sorting by relevance, experience and fees with stable tie-breaking.
+
+Do not expose the internal database structure directly in API responses.
+
+## Tutor profile details
+
+GET /api/v1/tutors/{tutor_id}/subjects
+
+GET /api/v1/tutors/{tutor_id}/availability
+
+GET /api/v1/tutors/{tutor_id}/reviews
+
+Use suitable nested response schemas or adjust the routes to fit a cleaner API design. Avoid unnecessary endpoint duplication.
+
+## Saved tutors
+
+GET /api/v1/saved-tutors
+
+POST /api/v1/saved-tutors/{tutor_id}
+
+DELETE /api/v1/saved-tutors/{tutor_id}
+
+Only the authenticated parent can manage their own saved tutors.
+
+## Enquiries
+
+POST /api/v1/enquiries
+
+GET /api/v1/enquiries/my
+
+GET /api/v1/enquiries/{enquiry_id}
+
+PATCH /api/v1/enquiries/{enquiry_id}/status
+
+Validate ownership and allowed status transitions. A tutor must not arbitrarily accept or modify another tutor's enquiries.
+
+Never allow users to assign themselves unauthorized enquiry states.
+
+## Tutor availability
+
+GET /api/v1/tutors/me/availability
+
+PUT /api/v1/tutors/me/availability
+
+Allow tutors to manage their own schedule.
+
+## Reviews
+
+POST /api/v1/reviews
+
+GET /api/v1/tutors/{tutor_id}/reviews
+
+Implement moderation and appropriate eligibility rules. If the first release cannot reliably validate completed tuition, label reviews accordingly and do not falsely claim that they are verified.
+
+## Verification
+
+GET /api/v1/admin/verification-records
+
+POST /api/v1/admin/verification-records
+
+PATCH /api/v1/admin/verification-records/{record_id}
+
+Only authorized administrators can access and update these records.
+
+## Admin management
+
+GET /api/v1/admin/tutors
+
+PATCH /api/v1/admin/tutors/{tutor_id}/listing-status
+
+GET /api/v1/admin/enquiries
+
+GET /api/v1/admin/complaints
+
+PATCH /api/v1/admin/complaints/{complaint_id}
+
+GET /api/v1/admin/metrics
+
+Implement real authorization, input validation, audit logging and valid state transitions.
+
+## Reference data
+
+GET /api/v1/boards
+
+GET /api/v1/grades
+
+GET /api/v1/subjects
+
+These endpoints should return active reference data used by the frontend.
+
+Adjust endpoint names where a more consistent design is justified, but preserve all required capabilities and document the final API contract.
+
+# PART 7 — SMART MATCHING LOGIC
+
+Implement a transparent, deterministic tutor matching service.
+
+Inputs:
+- Board.
+- Grade.
+- Subject.
+- Locality.
+- Budget.
+- Optional availability requirements.
+
+Matching priorities:
+1. Required subject compatibility.
+2. Education board and grade compatibility.
+3. Locality/service-area compatibility.
+4. Budget compatibility.
+5. Availability where data exists.
+
+Return:
+- Matching tutor profile.
+- Match score.
+- Criteria satisfied.
+- Criteria not satisfied.
+- Human-readable explanation.
+
+Use a documented scoring formula, normalized weights and deterministic tie-breaking.
+
+A tutor must not receive a perfect score when mandatory criteria are missing.
+
+Do not label this as machine-learning or AI-powered matching. It is a rule-based matching system.
+
+Keep filtering correct even when some optional criteria are missing.
+
+# PART 8 — STORAGE AND FILE UPLOADS
+
+Implement secure profile photo upload support and an extensible path for private verification documents.
+
+Requirements:
+- Validate file type and size on the backend or through appropriately enforced storage policies.
+- Generate safe, unique storage paths.
+- Do not trust filename extensions or browser-provided content types alone.
+- Restrict uploads to authorized users.
+- Keep private documents in private storage.
+- Use signed, short-lived URLs when appropriate.
+- Do not expose private documents through public profile responses.
+- Handle failed uploads and cleanup safely.
+- Never store uploaded files using a publicly writable directory in production.
+
+If storage credentials are unavailable, implement the adapter, configuration and clear setup instructions without pretending uploads work in production.
+
+# PART 9 — CONNECT THE EXISTING FRONTEND
+
+This is critical.
+
+Inspect every current frontend page and replace hardcoded demonstration behaviour with real API calls wherever the feature is intended to be persistent.
+
+Preserve the existing design.
+
+Create:
+- Central API client.
+- Typed request and response interfaces.
+- Environment-based API base URL.
+- Authentication token integration.
+- Reusable error handling.
+- Loading states.
+- Empty states.
+- Retry controls where appropriate.
+- Form validation.
+- Success and failure feedback.
+- Proper pagination handling.
+- Protected route components.
+- Role-aware navigation.
+
+Use VITE_API_BASE_URL for the public backend URL.
+
+Never put backend secrets, database credentials, storage service-role keys or other private credentials in VITE_ environment variables.
+
+Connect the following workflows end to end:
+
+1. Parent registers and signs in.
+2. Parent completes their learning requirements.
+3. Parent searches for tutors.
+4. Search filters retrieve actual database results.
+5. Parent opens a tutor profile.
+6. Parent saves or removes a favourite.
+7. Parent submits an enquiry.
+8. Parent sees their own enquiry history.
+9. Tutor registers and completes a profile.
+10. Tutor selects boards, grades, subjects, fees and service areas.
+11. Tutor submits the profile for review.
+12. Administrator reviews the listing.
+13. Administrator updates listing and verification status.
+14. Approved tutor appears in public search.
+15. Tutor sees and manages authorized enquiries.
+16. Tutor updates availability.
+17. Authorized users submit or moderate reviews.
+18. Users submit complaints and administrators manage them.
+19. Dashboard statistics reflect actual database records.
+
+Do not silently fall back to fake successful API responses when the backend is unavailable.
+
+In development, show a clear backend-connection error and provide an optional, explicit mock/demo mode if the existing application needs it.
+
+Keep mock data separate from production API services. Make it impossible to confuse a mock result with a live database record.
+
+# PART 10 — FRONTEND FORM AND DATA REQUIREMENTS
+
+Implement proper validation on both client and server.
+
+Validate:
+- Email.
+- Required fields.
+- Fee amounts.
+- Experience values.
+- Selected board, grade and subject IDs.
+- Availability intervals.
+- Enquiry message length.
+- Review ratings.
+- Upload size and file type.
+
+Display understandable validation messages.
+
+Prevent duplicate submissions where practical.
+
+Disable submit buttons during requests.
+
+Preserve entered form data when a request fails where appropriate.
+
+Use server responses as the final authority.
+
+Do not rely on client-side validation for security.
+
+# PART 11 — SECURITY REQUIREMENTS
+
+Treat security as part of the implementation, not a future enhancement.
+
+Implement:
+- Server-side role and ownership checks.
+- Secure token validation.
+- Restricted admin operations.
+- Environment-based secrets.
+- Input validation.
+- SQL injection prevention using ORM/parameterized operations.
+- Safe output serialization.
+- Explicit CORS configuration.
+- Request rate limiting for sensitive endpoints.
+- Safe upload handling.
+- Generic client-facing server errors.
+- Audit logs for sensitive administrative changes.
+- Protection against mass assignment.
+- Correct authorization for every protected record.
+- Sensible account and data deletion policies.
+- Appropriate privacy and data retention considerations.
+
+Use HTTPS in production.
+
+Do not log authentication tokens or private personal information unnecessarily.
+
+Do not expose tutor verification documents, private phone numbers, internal notes or other restricted data through public endpoints.
+
+Do not claim the system is fully secure without appropriate testing.
+
+# PART 12 — DATABASE SEEDING AND DEVELOPMENT MODE
+
+Create a repeatable seed command or script that inserts:
+- Supported education boards.
+- Grades.
+- Subjects.
+- A few fictional tutor profiles.
+- Appropriate relationships and fees.
+- Optional clearly identified demonstration reviews and enquiries.
+
+Seed data must be safe to run repeatedly without creating duplicates.
+
+Never seed production with fake reviews or pretend verification records.
+
+Use synthetic user data for development.
+
+Do not create a public default administrator account or hardcode production credentials.
+
+Document how to configure a legitimate administrator through the selected authentication provider and database.
+
+# PART 13 — TESTING
+
+Create automated backend tests for:
+
+1. Health endpoint.
+2. Authentication validation.
+3. Parent/tutor/admin permissions.
+4. Public access to approved tutor profiles.
+5. Protection of draft and suspended profiles.
+6. Combined tutor filters.
+7. Fee filtering and sorting.
+8. Pagination.
+9. Tutor profile creation and updating.
+10. Enquiry creation and ownership.
+11. Enquiry status transitions.
+12. Saved tutor ownership.
+13. Unauthorized admin operations.
+14. Verification updates.
+15. Review validation and moderation.
+16. Complaint handling.
+17. Input validation and error responses.
+18. Database constraints and relationships.
+
+Use an isolated test database or appropriate test fixtures. Do not run destructive tests against production.
+
+Add frontend tests for critical user journeys if a test framework is already present or can be integrated cleanly.
+
+Run the available tests and fix failures before reporting completion.
+
+Do not claim tests passed unless you actually ran them.
+
+# PART 14 — DEPLOYMENT AND CONFIGURATION
+
+Provide root-level or clearly documented frontend and backend environment examples.
+
+Frontend configuration should include:
+VITE_API_BASE_URL
+
+Include only genuinely public configuration values in the frontend.
+
+Backend configuration should include suitable variables such as:
+- DATABASE_URL
+- SUPABASE_URL
+- SUPABASE_ANON_KEY, only where required by the selected backend integration
+- SUPABASE_JWT verification configuration appropriate to the chosen token verification method
+- SUPABASE_SERVICE_ROLE_KEY only if strictly needed for trusted server-side operations
+- STORAGE_BUCKET
+- ALLOWED_ORIGINS
+- ENVIRONMENT
+- LOG_LEVEL
+
+Do not invent credentials or include real secrets in committed files.
+
+Use a secure secret-management mechanism for production.
+
+Create:
+- Database migrations.
+- Backend startup instructions.
+- Frontend startup instructions.
+- Local development instructions.
+- API documentation instructions.
+- Database backup and migration guidance.
+- Deployment instructions for the frontend.
+- Deployment instructions for the backend.
+- Production CORS instructions.
+- Authentication provider configuration instructions.
+- Storage bucket and access policy instructions.
+- Troubleshooting guidance.
+
+Configure deployment so that frontend routes, API URLs and environment variables work correctly.
+
+Do not assume that deploying the frontend automatically deploys FastAPI or PostgreSQL.
+
+# PART 15 — DOCUMENTATION AND DELIVERABLES
+
+Create or update:
+
+1. README.md
+2. .env.example files
+3. Backend dependency manifest
+4. Alembic migrations
+5. Database schema documentation
+6. API endpoint documentation
+7. Authentication and authorization notes
+8. Local development setup
+9. Testing instructions
+10. Deployment guide
+11. Seed data instructions
+12. A clear list of implemented and not-yet-configured features
+
+Include a database relationship diagram using Mermaid in the documentation if practical.
+
+Explain which third-party accounts, environment variables and credentials I must configure manually.
+
+# PART 16 — ACCEPTANCE CRITERIA
+
+The project is not complete merely because files have been created.
+
+Verify that:
+
+- The existing frontend still looks and works correctly.
+- FastAPI starts successfully.
+- Database migrations apply successfully to the configured development database.
+- PostgreSQL stores and retrieves actual application records.
+- Authentication works with the selected provider once configured.
+- Protected endpoints enforce authorization.
+- Search filters return database-backed results.
+- Tutor profile changes persist after refreshing.
+- Saved tutors persist.
+- Enquiries persist and are visible only to authorized parties.
+- Tutor listing approval affects public search visibility.
+- Admin operations require valid administrator permissions.
+- File upload behaviour matches the configured storage setup.
+- Frontend and backend communicate correctly.
+- Errors are handled without misleading success messages.
+- Automated tests run successfully.
+- Production secrets are not committed.
+- Setup and deployment instructions are complete.
+
+If credentials or external services are unavailable, complete everything that can be implemented, clearly identify the remaining configuration, and provide exact setup steps. Do not fabricate successful integration results.
+
+# FINAL EXECUTION RULES
+
+Work incrementally and keep the application runnable.
+
+First inspect the project. Then implement the database and backend, connect the frontend, run migrations, test the workflows and write documentation.
+
+Preserve existing frontend styling and reusable components.
+
+Do not replace existing functionality unnecessarily.
+
+Do not leave core workflows as TODO comments or placeholder buttons.
+
+Do not stop after generating a database schema or API skeleton.
+
+If the project is too large to complete in one pass, prioritize the complete core workflow:
+authentication → tutor profile → approval → tutor search → tutor details → saved tutors → enquiry → tutor enquiry management.
+
+Then finish verification, reviews, complaints, dashboards, uploads, tests and deployment.
+
+At the end, provide:
+- Summary of actual changes.
+- Final project structure.
+- Database tables created.
+- API endpoints implemented.
+- Frontend workflows connected.
+- Tests actually executed and their results.
+- Commands to start the application.
+- Configuration still required.
+- Known limitations.
+
+Build a maintainable, secure, genuinely functional full-stack GharGuru marketplace, preserving the quality of the existing frontend.

@@ -1,0 +1,6 @@
+{
+  "name": "GharGuru - Home Tutor Marketplace",
+  "description": "The right tutor. Right at home. Premium home tutor marketplace connecting parents and verified tutors in Mumbai.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
